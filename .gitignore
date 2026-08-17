@@ -1,0 +1,36 @@
+## Visual Studio artifacts
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+## Build results / Output binaries
+[Bb]in/
+[Oo]bj/
+[LLEe]og/
+[Ll]ogs/
+
+## User-specific files & local settings
+*.user
+*.userosscache
+*.sln.docstates
+appsettings.Development.json
+appsettings.Local.json
+
+## Enterprise Library Block
+*.signed
+
+## NuGet Packages
+*.nupkg
+**/packages/*
+!**/packages/build/
+
+## ASP.NET / IIS Express local settings
+.vs/
+_ReSharper*/
+*.launchSettings.json.user
+
+## OS generated files
+.DS_Store
+Thumbs.db
