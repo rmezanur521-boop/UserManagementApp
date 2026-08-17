@@ -2,10 +2,15 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using UserManagementApp.Data;
 using UserManagementApp.Models;
+using UserManagementApp.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddSingleton<BackgroundEmailQueue>();
+builder.Services.AddHostedService<EmailBackgroundWorker>();
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 

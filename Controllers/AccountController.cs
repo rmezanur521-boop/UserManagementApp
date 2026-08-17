@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using UserManagementApp.Models;
+using UserManagementApp.Services;
 using UserManagementApp.ViewModels;
 
 namespace UserManagementApp.Controllers
@@ -10,11 +11,19 @@ namespace UserManagementApp.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly BackgroundEmailQueue _emailQueue;
+        private readonly IConfiguration _configuration;
 
-        public AccountController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+        public AccountController(
+            UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
+            BackgroundEmailQueue emailQueue,
+            IConfiguration configuration)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _emailQueue = emailQueue;
+            _configuration = configuration;
         }
 
         [HttpGet]
@@ -54,9 +63,51 @@ namespace UserManagementApp.Controllers
 
             await _signInManager.SignInAsync(user, isPersistent: false);
 
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = Uri.EscapeDataString(token);
+            var appUrl = _configuration["AppUrl"];
+            var confirmLink = $"{appUrl}/Account/ConfirmEmail?userId={user.Id}&token={encodedToken}";
+
+            _emailQueue.Enqueue(new EmailJob
+            {
+                ToEmail = user.Email,
+                Subject = "Verify your email",
+                HtmlBody = $"<p>Hello {user.FullName},</p><p>Click <a href=\"{confirmLink}\">here</a> to verify your email address.</p>"
+            });
+
             TempData["StatusMessage"] = "Registration successful. Please check your email to verify your account.";
 
             return RedirectToAction("Index", "Users");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ConfirmEmail(string userId, string token)
+        {
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+            {
+                return RedirectToAction("Login");
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+            {
+                return RedirectToAction("Login");
+            }
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+
+            if (result.Succeeded && user.Status == UserStatus.Unverified)
+            {
+                user.Status = UserStatus.Active;
+                await _userManager.UpdateAsync(user);
+            }
+
+            TempData["StatusMessage"] = result.Succeeded
+                ? "Email verified successfully."
+                : "Email verification failed or link expired.";
+
+            return RedirectToAction("Login");
         }
 
         [HttpGet]
@@ -109,4 +160,4 @@ namespace UserManagementApp.Controllers
             return RedirectToAction("Login");
         }
     }
-}
+} 
