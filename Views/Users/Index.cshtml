@@ -1,0 +1,217 @@
+﻿@model List<UserManagementApp.ViewModels.UserListItemViewModel>
+
+@{
+    ViewData["Title"] = "Users";
+    Layout = "_Layout";
+}
+@Html.AntiForgeryToken()
+
+<div id="statusAlert" class="alert d-none" role="alert"></div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="btn-toolbar" role="toolbar">
+                <div class="btn-group me-2">
+                    <button type="button" id="btnBlock" class="btn btn-outline-primary btn-sm" disabled data-bs-toggle="tooltip" title="Block selected users">
+                        Block
+                    </button>
+                </div>
+                <div class="btn-group me-2">
+                    <button type="button" id="btnUnblock" class="btn btn-outline-secondary btn-sm" disabled data-bs-toggle="tooltip" title="Unblock selected users">
+                        <i class="bi bi-unlock"></i>
+                    </button>
+                </div>
+                <div class="btn-group me-2">
+                    <button type="button" id="btnDelete" class="btn btn-outline-danger btn-sm" disabled data-bs-toggle="tooltip" title="Delete selected users">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                <div class="btn-group">
+                    <button type="button" id="btnDeleteUnverified" class="btn btn-outline-warning btn-sm" data-bs-toggle="tooltip" title="Delete all unverified users">
+                        <i class="bi bi-person-x"></i>
+                    </button>
+                </div>
+            </div>
+
+            <input type="text" id="filterInput" class="form-control form-control-sm" style="max-width: 220px;" placeholder="Filter" />
+        </div>
+
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">
+                        <input type="checkbox" id="selectAll" class="form-check-input" />
+                    </th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Last seen</th>
+                </tr>
+            </thead>
+            <tbody id="userTableBody">
+                @foreach (var user in Model)
+                {
+                    <tr data-user-id="@user.Id" data-status="@user.Status.ToLower()">
+                        <td>
+                            <input type="checkbox" class="form-check-input row-checkbox" value="@user.Id" />
+                        </td>
+                        <td>@user.FullName</td>
+                        <td>@user.Email</td>
+                        <td>
+                            @if (user.Status == "Active")
+                            {
+                                <span class="badge text-bg-success">Active</span>
+                            }
+                            else if (user.Status == "Blocked")
+                            {
+                                <span class="badge text-bg-secondary">Blocked</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-warning text-dark">Unverified</span>
+                            }
+                        </td>
+                        <td>
+                            @(user.LastLoginTime.HasValue? user.LastLoginTime.Value.ToString("dd/MM/yyyy, HH:mm:ss") : "N/A")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var selectAll = document.getElementById('selectAll');
+        var rowCheckboxes = document.querySelectorAll('.row-checkbox');
+        var btnBlock = document.getElementById('btnBlock');
+        var btnUnblock = document.getElementById('btnUnblock');
+        var btnDelete = document.getElementById('btnDelete');
+        var btnDeleteUnverified = document.getElementById('btnDeleteUnverified');
+        var filterInput = document.getElementById('filterInput');
+        var tableBody = document.getElementById('userTableBody');
+        var statusAlert = document.getElementById('statusAlert');
+        var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        function updateToolbarState() {
+            var checkedCount = document.querySelectorAll('.row-checkbox:checked').length;
+            var anySelected = checkedCount > 0;
+
+            btnBlock.disabled = !anySelected;
+            btnUnblock.disabled = !anySelected;
+            btnDelete.disabled = !anySelected;
+        }
+
+        function getSelectedIds() {
+            var checked = document.querySelectorAll('.row-checkbox:checked');
+            return Array.from(checked).map(function (c) { return c.value; });
+        }
+
+        function showStatus(message, isError) {
+            statusAlert.textContent = message;
+            statusAlert.classList.remove('d-none', 'alert-success', 'alert-danger');
+            statusAlert.classList.add(isError ? 'alert-danger' : 'alert-success');
+        }
+
+        async function callAction(url, ids) {
+            var response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify(ids)
+            });
+
+            var data = await response.json();
+
+            if (!data.success) {
+                showStatus(data.message, true);
+                return;
+            }
+
+            showStatus(data.message, false);
+
+            if (data.selfAffected) {
+                window.location.href = '/Account/Login';
+                return;
+            }
+
+            setTimeout(function () {
+                window.location.reload();
+            }, 800);
+        }
+
+        selectAll.addEventListener('change', function () {
+            rowCheckboxes.forEach(function (checkbox) {
+                checkbox.checked = selectAll.checked;
+            });
+            updateToolbarState();
+        });
+
+        rowCheckboxes.forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                if (!checkbox.checked) {
+                    selectAll.checked = false;
+                }
+                updateToolbarState();
+            });
+        });
+
+        btnBlock.addEventListener('click', function () {
+            callAction('/Users/Block', getSelectedIds());
+        });
+
+        btnUnblock.addEventListener('click', function () {
+            callAction('/Users/Unblock', getSelectedIds());
+        });
+
+        btnDelete.addEventListener('click', function () {
+            callAction('/Users/Delete', getSelectedIds());
+        });
+
+        btnDeleteUnverified.addEventListener('click', async function () {
+            var response = await fetch('/Users/DeleteUnverified', {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': token
+                }
+            });
+
+            var data = await response.json();
+
+            if (!data.success) {
+                showStatus(data.message, true);
+                return;
+            }
+
+            showStatus(data.message, false);
+
+            if (data.selfAffected) {
+                window.location.href = '/Account/Login';
+                return;
+            }
+
+            setTimeout(function () {
+                window.location.reload();
+            }, 800);
+        });
+
+        filterInput.addEventListener('input', function () {
+            var query = filterInput.value.toLowerCase();
+            var rows = tableBody.querySelectorAll('tr');
+
+            rows.forEach(function (row) {
+                var text = row.textContent.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        });
+
+        var tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltipTriggerList.forEach(function (el) {
+            new bootstrap.Tooltip(el);
+        });
+    </script>
+}
