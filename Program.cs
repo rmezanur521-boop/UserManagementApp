@@ -43,7 +43,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthentication();
-
+app.UseMiddleware<UserManagementApp.Middleware.UserStatusMiddleware>();
 app.UseAuthorization();
 
 app.MapControllerRoute(
