@@ -17,7 +17,7 @@
 *.sln.docstates
 appsettings.Development.json
 appsettings.Local.json
-
+appsettings.json
 ## Enterprise Library Block
 *.signed
 

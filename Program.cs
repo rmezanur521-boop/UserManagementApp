@@ -4,7 +4,17 @@ using UserManagementApp.Data;
 using UserManagementApp.Models;
 using UserManagementApp.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args
+});
+
+builder.Configuration.Sources.Clear();
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false)
+    .AddEnvironmentVariables();
+
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 // Add services to the container.
@@ -64,3 +74,4 @@ app.MapControllerRoute(
     pattern: "{controller=Users}/{action=Index}/{id?}");
 
 app.Run();
+
