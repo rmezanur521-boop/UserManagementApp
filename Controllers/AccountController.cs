@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using UserManagementApp.Models;
 using UserManagementApp.Services;
 using UserManagementApp.ViewModels;
@@ -49,20 +50,27 @@ namespace UserManagementApp.Controllers
                 RegisteredAt = DateTime.UtcNow
             };
 
-            var result = await _userManager.CreateAsync(user, model.Password);
-
-            if (!result.Succeeded)
+            try
             {
-                foreach (var error in result.Errors)
-                {
-                    ModelState.AddModelError(string.Empty, error.Description);
-                }
+                var result = await _userManager.CreateAsync(user, model.Password);
 
+                if (!result.Succeeded)
+                {
+                    foreach (var error in result.Errors)
+                    {
+                        ModelState.AddModelError(string.Empty, error.Description);
+                    }
+
+                    return View(model);
+                }
+            }
+            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+            {
+                ModelState.AddModelError(string.Empty, "This email address is already registered.");
                 return View(model);
             }
 
             await _signInManager.SignInAsync(user, isPersistent: false);
-
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var encodedToken = Uri.EscapeDataString(token);
             var appUrl = _configuration["AppUrl"];
@@ -158,6 +166,11 @@ namespace UserManagementApp.Controllers
         {
             await _signInManager.SignOutAsync();
             return RedirectToAction("Login");
+        }
+        private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+        {
+            return ex.InnerException != null &&
+                   ex.InnerException.Message.Contains("duplicate key value violates unique constraint");
         }
     }
 } 

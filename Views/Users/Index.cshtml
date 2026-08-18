@@ -72,9 +72,16 @@
                                 <span class="badge text-bg-warning text-dark">Unverified</span>
                             }
                         </td>
-                        <td>
-                            @(user.LastLoginTime.HasValue? user.LastLoginTime.Value.ToString("dd/MM/yyyy, HH:mm:ss") : "N/A")
-                        </td>
+                            <td>
+                                @if (user.LastLoginTime.HasValue)
+                                {
+                                    <span data-bs-toggle="tooltip" title="@user.LastSeenExact">@user.LastSeenDisplay</span>
+                                }
+                                else
+                                {
+                                    <span>N/A</span>
+                                }
+                            </td>
                     </tr>
                 }
             </tbody>
