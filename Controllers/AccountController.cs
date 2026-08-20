@@ -75,12 +75,12 @@ namespace UserManagementApp.Controllers
             var encodedToken = Uri.EscapeDataString(token);
             var appUrl = _configuration["AppUrl"];
             var confirmLink = $"{appUrl}/Account/ConfirmEmail?userId={user.Id}&token={encodedToken}";
-
+            var safeHref = System.Net.WebUtility.HtmlEncode(confirmLink);
             _emailQueue.Enqueue(new EmailJob
             {
                 ToEmail = user.Email,
                 Subject = "Verify your email",
-                HtmlBody = $"<p>Hello {user.FullName},</p><p>Click <a href=\"{confirmLink}\">here</a> to verify your email address.</p>"
+                HtmlBody = $"<p>Hello {user.FullName},</p><p>Click <a href=\"{safeHref}\">here</a> to verify your email address.</p>"
             });
 
             TempData["StatusMessage"] = "Registration successful. Please check your email to verify your account.";

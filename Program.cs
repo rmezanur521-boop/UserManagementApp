@@ -22,7 +22,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddSingleton<BackgroundEmailQueue>();
 builder.Services.AddHostedService<EmailBackgroundWorker>();
-builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddHttpClient<IEmailSender, ResendEmailSender>();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
